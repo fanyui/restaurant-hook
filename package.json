@@ -8,6 +8,9 @@
   },
   "dependencies": {
     "aws-sdk": "^2.656.0",
+    "serverless-dynamodb-local": "^0.2.39",
+    "serverless-iam-roles-per-function": "^2.0.2",
+    "serverless-offline": "^6.1.4",
     "source-map-support": "^0.5.10",
     "uuid": "^7.0.3"
   },

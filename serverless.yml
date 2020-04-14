@@ -1,8 +1,8 @@
 service:
   name: restaurant-hook
 # app and org for use with dashboard.serverless.com
-#app: your-app-name
-#org: your-org-name
+#app: feeder
+#org: com.afayi.restaurarnt-hook
 
 custom:
   webpack:
@@ -12,15 +12,33 @@ custom:
 # Add the serverless-webpack plugin
 plugins:
   - serverless-webpack
+  - serverless-offline
+  - serverless-dynamodb-local
+  - serverless-iam-roles-per-function
 
 provider:
   name: aws
   runtime: nodejs12.x
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-2'}
+
   apiGateway:
     minimumCompressionSize: 1024 # Enable gzip compression for responses > 1 KB
   environment:
     AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
-
+    RESTAURANT_TABLE: Restaurant-${self.provider.stage}
+    S3_BUCKET: restaurant-hook-${self.provider.stage}
+    INDEX_NAME: restaurantindex
+custom:
+  serverless-offline
+  - port: 3003
+  dynamodb:
+    stages:
+      - ${self:provider.stage}
+    start:
+      port: 8000
+      inMemory: true
+      migrate: true
 functions:
   GetRestaurant:
     handler: src/lambda/http/getRestaurant.handler
@@ -29,3 +47,64 @@ functions:
           method: get
           path: restaurant
           cors: true
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:Query 
+          - dynamodb:Scan
+          - dynamodb:GetItem
+        Resource: arn:aws:dynamodb:${self.provider.region}:*:table/${self.environment.RESTAURANT_TABLE}
+  
+  CreateRestaurant:
+    handler: src/lambda/http/createRestaurant
+      - http:
+          method: post
+          path: restaurant
+          cors: true
+
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:PutItem 
+        Resource: arn:aws:dynamodb:${self.provider.region}:*:table/${self.environment.RESTAURANT_TABLE}
+
+resources:
+  Resources:
+    GatewayResponseDefault4XX:
+      Type: AWS::ApiGateway::GatewayResponse
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+          gatewayresponse.header.Access-Control-Allow-Methods: "'*'"
+        ResponseType: DEFAULT_4XX
+        RestApiId:
+          Ref: ApiGatewayRestApi
+    RestaurantTable:
+      Type:AWS::DynamoDB::Table
+      Properties:
+        AttributeDefinition:
+          - AttributeName: restaurantId
+            AttributeType: S 
+          - AttributeName: name
+            AttributeType: S 
+          - AttributeName: location
+            AttributeType: S 
+          - AttributeName: createdAt
+            AttributeType: S 
+          - AttributeName: phone
+            AttributeType: S 
+        KeySchema:
+          -AttributeName: restaurantId
+            KeyType: Hash
+        BillingMode: PAY_PER_REQUEST
+        TableName: ${self:provider.environment.TODOS_TABLE}
+        LocalSecondaryIndexes:
+          - IndexName: ${self:provider.environment.INDEX_NAME}
+            KeySchema:
+              - AttributeName: restaurantId
+                KeyType: HASH
+              - AttributeName: createdAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL # What attributes will be copied to an index

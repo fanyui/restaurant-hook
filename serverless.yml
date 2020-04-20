@@ -3,18 +3,12 @@ service:
 # app and org for use with dashboard.serverless.com
 #app: feeder
 #org: com.afayi.restaurarnt-hook
-
-custom:
-  webpack:
-    webpackConfig: ./webpack.config.js
-    includeModules: true
-
 # Add the serverless-webpack plugin
 plugins:
   - serverless-webpack
-  - serverless-offline
   - serverless-dynamodb-local
   - serverless-iam-roles-per-function
+  - serverless-offline
 
 provider:
   name: aws
@@ -26,12 +20,19 @@ provider:
     minimumCompressionSize: 1024 # Enable gzip compression for responses > 1 KB
   environment:
     AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
-    RESTAURANT_TABLE: Restaurant-${self.provider.stage}
-    S3_BUCKET: restaurant-hook-${self.provider.stage}
+    RESTAURANT_TABLE: Restaurant-${self:provider.stage}
+    SIGNED_URL_EXPIRATION: 300
+    S3_BUCKET: restaurant-hook-${self:provider.stage}
     INDEX_NAME: restaurantindex
+    MENUS_TABLE: Menus-${self:provider.stage}
+    
 custom:
-  serverless-offline
-  - port: 3003
+  webpack:
+    webpackConfig: ./webpack.config.js
+    includeModules: true
+
+  serverless-offline:
+    - port: 3003
   dynamodb:
     stages:
       - ${self:provider.stage}
@@ -53,10 +54,33 @@ functions:
           - dynamodb:Query 
           - dynamodb:Scan
           - dynamodb:GetItem
-        Resource: arn:aws:dynamodb:${self.provider.region}:*:table/${self.environment.RESTAURANT_TABLE}
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.RESTAURANT_TABLE}
+  
+  GetMenu:
+    handler: src/lambda/http/getMenus.handler
+    events:
+      - http:
+          method: get
+          path: restaurant/{restaurantId}/menu
+          cors: true
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:Query 
+          - dynamodb:Scan
+          - dynamodb:GetItem
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.MENUS_TABLE}
+  
+      - Effect: Allow
+        Action:
+          - dynamodb:Query 
+          - dynamodb:Scan
+          - dynamodb:GetItem
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.RESTAURANT_TABLE}
   
   CreateRestaurant:
-    handler: src/lambda/http/createRestaurant
+    handler: src/lambda/http/createRestaurant.handler
+    events:
       - http:
           method: post
           path: restaurant
@@ -66,8 +90,68 @@ functions:
       - Effect: Allow
         Action:
           - dynamodb:PutItem 
-        Resource: arn:aws:dynamodb:${self.provider.region}:*:table/${self.environment.RESTAURANT_TABLE}
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.RESTAURANT_TABLE}
 
+  CreateMenu:
+    handler: src/lambda/http/createMenu.handler
+    events:
+      - http:
+          method: post
+          path: restaurant/{restaurantId}/menu
+          cors: true
+
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:PutItem 
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.MENUS_TABLE}
+      - Effect: Allow
+        Action:
+          - dynamodb:Query 
+          - dynamodb:GetItem
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.RESTAURANT_TABLE}
+  
+  UpdateRestaurant:
+    handler: src/lambda/http/updateRestaurant.handler
+    events:
+      - http:
+          method: patch
+          path: restaurant/{restaurantId}
+          cors: true
+
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:PutItem
+          - dynamodb:UpdateItem
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.RESTAURANT_TABLE}
+
+    # TODO: Configure this function
+  GenerateUploadUrl:
+    handler: src/lambda/http/generateUploadUrl.handler
+    events:
+      - http:
+          method: post
+          path: restaurant/{restaurantId}/attachment
+          cors: true
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - s3:PutObject
+          - s3:GetObject
+        Resource: "arn:aws:s3:::${self:provider.environment.S3_BUCKET}/*"
+      - Effect: Allow
+        Action:
+          - dynamodb:GetItem
+          - dynamodb:PutItem
+          - dynamodb:UpdateItem
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.RESTAURANT_TABLE}
+      - Effect: Allow
+        Action:
+          - "xray:PutTraceSegments"
+          - "xray:PutTelemetryRecords"
+        Resource:
+          - "*"
 resources:
   Resources:
     GatewayResponseDefault4XX:
@@ -81,30 +165,73 @@ resources:
         RestApiId:
           Ref: ApiGatewayRestApi
     RestaurantTable:
-      Type:AWS::DynamoDB::Table
+      Type: AWS::DynamoDB::Table
       Properties:
-        AttributeDefinition:
+        AttributeDefinitions:
           - AttributeName: restaurantId
             AttributeType: S 
-          - AttributeName: name
-            AttributeType: S 
-          - AttributeName: location
-            AttributeType: S 
-          - AttributeName: createdAt
-            AttributeType: S 
-          - AttributeName: phone
-            AttributeType: S 
+
         KeySchema:
-          -AttributeName: restaurantId
-            KeyType: Hash
+          - AttributeName: restaurantId
+            KeyType: HASH
         BillingMode: PAY_PER_REQUEST
-        TableName: ${self:provider.environment.TODOS_TABLE}
-        LocalSecondaryIndexes:
-          - IndexName: ${self:provider.environment.INDEX_NAME}
-            KeySchema:
-              - AttributeName: restaurantId
-                KeyType: HASH
-              - AttributeName: createdAt
-                KeyType: RANGE
-            Projection:
-              ProjectionType: ALL # What attributes will be copied to an index
+        TableName: ${self:provider.environment.RESTAURANT_TABLE}
+
+    MenuTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: restaurantId
+            AttributeType: S 
+          - AttributeName: timestamp
+            AttributeType: S 
+
+        KeySchema:
+          - AttributeName: restaurantId
+            KeyType: HASH
+          - AttributeName: timestamp
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+        TableName: ${self:provider.environment.MENUS_TABLE}
+        # LocalSecondaryIndexes:
+        #   - IndexName: ${self:provider.environment.INDEX_NAME}
+        #     KeySchema:
+        #       - AttributeName: restaurantId
+        #         KeyType: HASH
+        #       - AttributeName: createdAt
+        #         KeyType: RANGE
+        #     Projection:
+        #       ProjectionType: ALL # What attributes will be copied to an index
+    S3Bucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:provider.environment.S3_BUCKET}
+        CorsConfiguration:
+          CorsRules:
+            -
+              AllowedOrigins:
+                - '*'
+              AllowedHeaders:
+                - '*'
+              AllowedMethods:
+                - GET
+                - PUT
+                - POST
+                - DELETE
+                - HEAD
+              MaxAge: 3000
+
+    BucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        PolicyDocument:
+          Id: MyPolicy
+          Version: "2012-10-17"
+          Statement:
+            - Sid: PublicReadForGetBucketObjects
+              Effect: Allow
+              Principal: '*'
+              Action: 's3:GetObject'
+              Resource: 'arn:aws:s3:::${self:provider.environment.S3_BUCKET}/*'
+        Bucket: !Ref S3Bucket
+

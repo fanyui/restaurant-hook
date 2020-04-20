@@ -12,7 +12,8 @@
     "serverless-iam-roles-per-function": "^2.0.2",
     "serverless-offline": "^6.1.4",
     "source-map-support": "^0.5.10",
-    "uuid": "^7.0.3"
+    "uuid": "^7.0.3",
+    "winston": "^3.2.1"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.17",

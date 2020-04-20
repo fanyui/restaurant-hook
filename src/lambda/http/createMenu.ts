@@ -34,6 +34,9 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
     return {
         statusCode: 201,
+        headers: {
+            'Access-Control-Allow-Origin': '*',
+        },
         body: JSON.stringify({
             newItem: newItem,
             uploadUrl: url

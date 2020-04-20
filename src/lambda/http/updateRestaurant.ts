@@ -16,6 +16,9 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
     const result = await updateRestaurant( restaurantId, restuarantBody)
     return {
         statusCode: 200,
+        headers: {
+            'Access-Control-Allow-Origin': '*',
+        },
         body: JSON.stringify(result),
     };
 }

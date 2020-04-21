@@ -41,12 +41,15 @@ custom:
       inMemory: true
       migrate: true
 functions:
+  Auth:
+    handler: src/lambda/auth/auth0Authorizer.handler
   GetRestaurant:
     handler: src/lambda/http/getRestaurant.handler
     events:
       - http:
           method: get
           path: restaurant
+          authorizer: Auth
           cors: true
     iamRoleStatements:
       - Effect: Allow
@@ -61,6 +64,7 @@ functions:
     events:
       - http:
           method: get
+          authorizer: Auth
           path: restaurant/{restaurantId}/menu
           cors: true
     iamRoleStatements:
@@ -101,6 +105,11 @@ functions:
           cors: true
 
     iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - s3:PutObject
+          - s3:GetObject
+        Resource: "arn:aws:s3:::${self:provider.environment.S3_BUCKET}/*"
       - Effect: Allow
         Action:
           - dynamodb:PutItem 
@@ -170,10 +179,13 @@ resources:
         AttributeDefinitions:
           - AttributeName: restaurantId
             AttributeType: S 
-
+          - AttributeName: userId
+            AttributeType: S
         KeySchema:
-          - AttributeName: restaurantId
+          - AttributeName: userId
             KeyType: HASH
+          - AttributeName: restaurantId
+            KeyType: RANGE
         BillingMode: PAY_PER_REQUEST
         TableName: ${self:provider.environment.RESTAURANT_TABLE}
 

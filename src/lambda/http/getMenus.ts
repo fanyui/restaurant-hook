@@ -4,11 +4,14 @@ import { getMenusByRestaurant } from '../../utils/helpers'
 import { restaurantExists } from './generateUploadUrl';
 import { createLogger } from '../../utils/logger';
 const logger = createLogger('Menu')
+import { getUserId } from '../utils'
 
 export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
     const restaurantId = event.pathParameters.restaurantId
     //check if todo item exists
-    const validRestaurantId = await restaurantExists(restaurantId)
+    const userId = getUserId(event);
+
+    const validRestaurantId = await restaurantExists(userId, restaurantId)
 
     if (!validRestaurantId) {
         logger.error("No restaurant found with id ", restaurantId)

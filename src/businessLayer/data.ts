@@ -4,7 +4,6 @@ import { Data } from "../datalayer/data"
 import { CreateRestaurantRequest } from "../Request/CreateRestaurantRequest"
 import { UpdateRestaurantRequest } from "../Request/UpdateRestaurantRequest"
 
-
 const data = new Data()
 export async function updateRestaurant(id: string, updateRestaurantRequest: UpdateRestaurantRequest): Promise<UpdateRestaurantRequest> {
     const updateItem : UpdateRestaurantRequest = {
@@ -16,11 +15,13 @@ export async function updateRestaurant(id: string, updateRestaurantRequest: Upda
 
 export async function createRestaurant(
     createRestaurantRequest: CreateRestaurantRequest,
+    userId: string
 ): Promise<Restaurant> {
 
     const restaurantId = uuidv4()
 
     const newRestaurant: Restaurant = {
+        userId: userId,
         restaurantId: restaurantId,
         updatedAt: new Date().toISOString(),
         createdAt: new Date().toISOString(),
@@ -32,8 +33,8 @@ export async function createRestaurant(
     return await data.createRestaurant(newRestaurant)
 }
 
-export async function getRestaurants() : Promise<Restaurant[]>{
-    return data.getRestaurant()
+export async function getRestaurants(userId: string) : Promise<Restaurant[]>{
+    return data.getRestaurant(userId)
 }
 
 export async function generateUploadUrl(restaurantId: string): Promise<String> {

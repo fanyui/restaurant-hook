@@ -31,10 +31,15 @@ export class Data {
 
         return restaurant
     }
-    async getRestaurant(): Promise<Restaurant[]> {
-        const result = await this.docClient.scan({
+    async getRestaurant(userId: string): Promise<Restaurant[]> {
+        const result = await this.docClient.query({
             TableName: this.restaurantTable,
+            KeyConditionExpression: 'userId = :userId',
+            ExpressionAttributeValues: {
+                ':userId': userId
+            }
         }).promise()
+
 
 
         const items = result.Items

@@ -1,9 +1,12 @@
 import { APIGatewayProxyHandler, APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import 'source-map-support/register';
 import { getRestaurants } from '../../businessLayer/data'
-
+import { getUserId } from '../utils'
 export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-    const resp = await getRestaurants()
+    const userId = getUserId(event);
+
+    
+    const resp = await getRestaurants(userId)
     console.log(event)
 //    const resp = {
 //        message: "all restaurant fetched success",

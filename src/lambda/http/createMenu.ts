@@ -4,6 +4,7 @@ import * as AWS from 'aws-sdk'
 import * as uuid from 'uuid'
 import { restaurantExists } from './generateUploadUrl'
 import { CreateMenuRequest } from '../../Request/CreateMenuRequest'
+import { getUserId } from '../utils'
 const docClient = new AWS.DynamoDB.DocumentClient()
 const s3 = new AWS.S3({
     signatureVersion: 'v4'
@@ -16,7 +17,9 @@ const urlExpiration = process.env.SIGNED_URL_EXPIRATION
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
     console.log('Caller event', event)
     const restaurantId = event.pathParameters.restaurantId
-    const validRestau = await restaurantExists(restaurantId)
+    const userId = getUserId(event);
+
+    const validRestau = await restaurantExists(userId, restaurantId)
 
     if (!validRestau) {
         return {

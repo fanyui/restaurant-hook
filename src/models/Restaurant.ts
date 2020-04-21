@@ -1,4 +1,5 @@
 export interface Restaurant {
+    userId: string
     restaurantId: string
     updatedAt: string
     createdAt: string

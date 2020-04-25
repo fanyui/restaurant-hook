@@ -38,3 +38,8 @@ export async function getRestaurants(userId: string) : Promise<Restaurant[]>{
 export async function generateUploadUrl(restaurantId: string): Promise<String> {
     return data.generateUploadUrl(restaurantId)
 }
+
+export async function deleteRestaurant(userId: string, restaurantId: string): Promise<String> {
+
+    return data.deleteRestaurant(userId, restaurantId)
+}

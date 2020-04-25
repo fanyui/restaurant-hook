@@ -72,7 +72,19 @@ export class Data {
         return restaurant
 
     }
+    async deleteRestaurant(userId: string, restaurantId: string): Promise<String> {
+        await this.docClient.delete({
+            TableName: this.restaurantTable,
+            Key: {
+                userId: userId,
+                restaurantId: restaurantId
+            }
+        }).promise()
 
+        logger.info("delete successfull")
+        return ''
+
+    }
     async generateUploadUrl(restaurantId: string): Promise<String> {
         const url = getUploadUrl(restaurantId, this.bucketName)
 

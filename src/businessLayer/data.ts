@@ -25,9 +25,7 @@ export async function createRestaurant(
         restaurantId: restaurantId,
         updatedAt: new Date().toISOString(),
         createdAt: new Date().toISOString(),
-        name: createRestaurantRequest.name,
-        location: createRestaurantRequest.location,
-        phone: createRestaurantRequest.phone
+        ...createRestaurantRequest
     }
 
     return await data.createRestaurant(newRestaurant)

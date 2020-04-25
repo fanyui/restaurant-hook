@@ -4,4 +4,5 @@ export interface CreateRestaurantRequest {
     name : string,
     location: string,
     phone: string,
+    description: string,
 }

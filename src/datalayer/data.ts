@@ -1,11 +1,13 @@
 import 'source-map-support/register'
 import * as AWS from 'aws-sdk'
+const AWSXRay = require('aws-xray-sdk');
+const XAWS = AWSXRay.captureAWS(AWS)
 import { DocumentClient } from 'aws-sdk/clients/dynamodb'
 import { Restaurant } from "../models/Restaurant";
 import { UpdateRestaurantRequest } from "../Request/UpdateRestaurantRequest"
 
 import { createLogger } from '../../src/utils/logger'
-const s3 = new AWS.S3({
+const s3 = new XAWS.S3({
     signatureVersion: 'v4'
 })
 const urlExpiration = process.env.SIGNED_URL_EXPIRATION
@@ -113,5 +115,5 @@ function createDynamoDBClient() {
         })
     }
 
-    return new AWS.DynamoDB.DocumentClient()
+    return new XAWS.DynamoDB.DocumentClient()
 }

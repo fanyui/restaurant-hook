@@ -11,6 +11,10 @@ plugins:
   - serverless-offline
 
 provider:
+  tracing:
+    lambda: true
+    apiGateway: true  
+    
   name: aws
   runtime: nodejs12.x
   stage: ${opt:stage, 'dev'}
